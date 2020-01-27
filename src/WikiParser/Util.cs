@@ -1,4 +1,5 @@
 
+using System.Text;
 using System.Xml;
 
 namespace WikiParser
@@ -76,6 +77,26 @@ namespace WikiParser
             reader.Advance(XmlNodeType.EndElement, name);
 
             return content;
+        }
+
+
+        public static string ParseTextElement(this XmlTextReader reader)
+        {
+            var name = reader.Name;
+
+            var builder = new StringBuilder();
+
+            reader.Read();
+            while (reader.NodeType == XmlNodeType.Text || reader.NodeType == XmlNodeType.Whitespace)
+            {
+                builder.Append(reader.Value);
+                reader.Read();
+            }
+
+            // Text element is self-closing...always?
+            // reader.ExpectEndElement(name);
+
+            return builder.ToString();
         }
     }
 }
