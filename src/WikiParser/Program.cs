@@ -5,7 +5,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml;
+
 using ICSharpCode.SharpZipLib.GZip;
+using MwParserFromScratch;
+using MwParserFromScratch.Nodes;
 
 
 namespace WikiParser
@@ -15,9 +18,9 @@ namespace WikiParser
         static void Main(string[] args)
         {
             // TODO - pull from args
-            var infile = "../../data/enwiki-20200120-pages-meta-current1.xml-p10p30303.gz";
+            // var infile = "../../data/enwiki-20200120-pages-meta-current1.xml-p10p30303.gz";
             // var infile = "../../data/enwiki-20200120-pages-meta-current2.xml-p30304p88444.gz";
-            // var infile = "../../data/enwiki-20200120-pages-meta-current3.xml-p88445p200507.gz";
+            var infile = "../../data/enwiki-20200120-pages-meta-current3.xml-p88445p200507.gz";
 
             ParseLines(infile);
         }
@@ -44,17 +47,23 @@ namespace WikiParser
 
                     if (pages.Count > 0)
                     {
+                        PrintIndexSummary(pages);
+
                         // DumpSummary(pages);
                         // DumpPage(pages, "ASCII");
                         // DumpPage(pages, "Alien");
                         // DumpPage(pages, "Austin (disambiguation)");
 
-                        // DumpPage(pages, "Extrapyramidal");       // 112 bytes
-                        // DumpPage(pages, "KISS (system)");        // 300 bytes
-                        // DumpPage(pages, "Military of Samoa");    // 503 bytes
-                        // DumpPage(pages, "Neelin");               // 806 bytes
+                        // DumpPage(pages, "Extrapyramidal");       // len: 112
+                        // DumpPage(pages, "KISS (system)");        // len: 300
+                        // DumpPage(pages, "Military of Samoa");    // len: 503
+                        // DumpPage(pages, "Neelin");               // len: 806
+                        // DumpPage(pages, "Sour mix");             // len: 923
 
-                        DumpSmallest(pages, 910);
+                        // DumpSmallest(pages, 910);
+
+                        // ParseAndDump(pages, "Sour mix");
+                        // ParseAndDump(pages, "A");
                     }
                 }
                 catch (ParseException ex)
@@ -67,6 +76,104 @@ namespace WikiParser
                     Console.WriteLine(ex.ToString());
                 }
             }
+        }
+
+
+        private static void PrintIndexSummary(List<Page> pages)
+        {
+            var keys = new Dictionary<string, int>();
+
+            var num = 0;
+            foreach (var page in pages.Where(x => x.Namespace == 0 && x.Redirect == null))
+            {
+                num += 1;
+                var key = GetIndexBucket(page);
+
+                if (keys.ContainsKey(key))
+                {
+                    keys[key] += 1;
+                }
+                else
+                {
+                    keys.Add(key, 1);
+                }
+            }
+
+            var sorted = keys.OrderByDescending(x => x.Value).Take(26);
+
+            Console.WriteLine("-> {0} pages with ns=0, redirect=null", num);
+
+            const string fmt = "{0,5}  {1}";
+            Console.WriteLine(fmt, "Count", "Bucket");
+            foreach (var item in sorted)
+            {
+                Console.WriteLine(fmt, item.Value, item.Key);
+            }
+        }
+
+
+        private static string GetIndexBucket(Page page)
+        {
+            /*
+            if (page.Title.Length >= 2)
+            {
+                return page.Title.Substring(0, 2);
+            }
+            else
+            {
+                return page.Title + "_";
+            }
+            */
+
+            return page.Title.Substring(0, 1);
+        }
+
+
+        private static void ParseAndDump(List<Page> pages, string title)
+        {
+            var page = pages.FirstOrDefault(x => x.Title == title);
+
+            if (page == null)
+            {
+                Console.WriteLine("Page '{0}' not found.", title);
+                return;
+            }
+
+            // TODO - dump the text and meta to a file
+        }
+
+
+        private static void ParseAndPrint(List<Page> pages, string title)
+        {
+            var page = pages.FirstOrDefault(x => x.Title == title);
+
+            if (page == null)
+            {
+                Console.WriteLine("Page '{0}' not found.", title);
+                return;
+            }
+
+            var parser = new WikitextParser();
+            var ast = parser.Parse(page.Text);
+            // PrintAst(ast, 0);
+            Console.WriteLine(ast.ToPlainText());
+        }
+
+
+        private static string Escapse(string expr)
+        {
+            return expr.Replace("\r", "\\r").Replace("\n", "\\n");
+        }
+
+
+        private static void PrintAst(Node node, int level)
+        {
+            var indension = new string('.', level);
+            var ns = node.ToString();
+            Console.WriteLine("{0,-20} [{1}]", indension + node.GetType().Name, 
+                    Escapse(ns.Substring(0, Math.Min(20, ns.Length))));
+            foreach (var child in node.EnumChildren())
+                PrintAst(child, level + 1);
         }
 
 

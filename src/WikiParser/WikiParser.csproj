@@ -7,6 +7,7 @@
 
     <ItemGroup>
         <PackageReference Include="SharpZipLib" Version="1.2.0" />
+        <PackageReference Include="CXuesong.MW.MwParserFromScratch" Version="0.2.1" />
     </ItemGroup>
 
 </Project>
